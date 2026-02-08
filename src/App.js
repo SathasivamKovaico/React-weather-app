@@ -1,250 +1,108 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import './App.css';
 
 function App() {
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  });
+  const [city, setCity] = useState('');
+  const [weather, setWeather] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const [errors, setErrors] = useState({});
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const API_KEY = 'bd5e378503939ddaee76f12ad7a97608'; // OpenWeatherMap API key
+  const API_URL = 'https://api.openweathermap.org/data/2.5/weather';
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-    // Clear error for this field when user starts typing
-    if (errors[name]) {
-      setErrors({
-        ...errors,
-        [name]: ''
+  const fetchWeather = async () => {
+    if (!city.trim()) {
+      setError('Please enter a city name');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await axios.get(API_URL, {
+        params: {
+          q: city,
+          appid: API_KEY,
+          units: 'metric'
+        }
       });
+      setWeather(response.data);
+      setError('');
+    } catch (err) {
+      setError('City not found. Please try again.');
+      setWeather(null);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-
-    // Username validation
-    if (!formData.username.trim()) {
-      newErrors.username = 'Username is required';
-    } else if (formData.username.length < 3) {
-      newErrors.username = 'Username must be at least 3 characters';
-    }
-
-    // Email validation
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    // Confirm password validation
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    return newErrors;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const newErrors = validateForm();
-
-    if (Object.keys(newErrors).length === 0) {
-      // Form is valid
-      setIsSubmitted(true);
-      setErrors({});
-    } else {
-      // Form has errors
-      setErrors(newErrors);
-      setIsSubmitted(false);
-    }
-  };
-
-  const handleReset = () => {
-    setFormData({
-      username: '',
-      email: '',
-      password: '',
-      confirmPassword: ''
-    });
-    setErrors({});
-    setIsSubmitted(false);
-  };
 
   return (
     <div className="App">
-      <div style={styles.container}>
-        <h1>Sign Up Form</h1>
+      <div className="container">
+        <h1 className="title">🌤️ Weather Dashboard</h1>
         
-        {/* Conditional rendering for success message */}
-        {isSubmitted ? (
-          <div style={styles.successContainer}>
-            <h2 style={styles.successTitle}>✓ Registration Successful!</h2>
-            <p style={styles.successMessage}>
-              Welcome, <strong>{formData.username}</strong>!
+        <div className="search-box">
+          <input
+            type="text"
+            placeholder="Enter city name..."
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className="input"
+          />
+          <button onClick={fetchWeather} className="button">
+            Search
+          </button>
+        </div>
+
+        {loading && <p className="loading">Loading...</p>}
+        
+        {error && <p className="error">{error}</p>}
+
+        {weather && !loading && (
+          <div className="weather-card">
+            <h2 className="city-name">
+              {weather.name}, {weather.sys.country}
+            </h2>
+            
+            <div className="temp-container">
+              <img
+                src={`http://openweathermap.org/img/wn/${weather.weather[0].icon}@2x.png`}
+                alt={weather.weather[0].description}
+                className="icon"
+              />
+              <h1 className="temp">{Math.round(weather.main.temp)}°C</h1>
+            </div>
+
+            <p className="description">
+              {weather.weather[0].description.toUpperCase()}
             </p>
-            <p style={styles.successMessage}>
-              A confirmation email has been sent to <strong>{formData.email}</strong>
-            </p>
-            <button onClick={handleReset} style={styles.button}>
-              Sign Up Another User
-            </button>
+
+            <div className="details">
+              <div className="detail-item">
+                <p className="detail-label">Feels Like</p>
+                <p className="detail-value">{Math.round(weather.main.feels_like)}°C</p>
+              </div>
+              <div className="detail-item">
+                <p className="detail-label">Humidity</p>
+                <p className="detail-value">{weather.main.humidity}%</p>
+              </div>
+              <div className="detail-item">
+                <p className="detail-label">Wind Speed</p>
+                <p className="detail-value">{weather.wind.speed} m/s</p>
+              </div>
+              <div className="detail-item">
+                <p className="detail-label">Pressure</p>
+                <p className="detail-value">{weather.main.pressure} hPa</p>
+              </div>
+            </div>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Username:</label>
-              <input
-                type="text"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                style={errors.username ? styles.inputError : styles.input}
-              />
-              {errors.username && (
-                <span style={styles.error}>{errors.username}</span>
-              )}
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Email:</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                style={errors.email ? styles.inputError : styles.input}
-              />
-              {errors.email && (
-                <span style={styles.error}>{errors.email}</span>
-              )}
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Password:</label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                style={errors.password ? styles.inputError : styles.input}
-              />
-              {errors.password && (
-                <span style={styles.error}>{errors.password}</span>
-              )}
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Confirm Password:</label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                style={errors.confirmPassword ? styles.inputError : styles.input}
-              />
-              {errors.confirmPassword && (
-                <span style={styles.error}>{errors.confirmPassword}</span>
-              )}
-            </div>
-
-            <button type="submit" style={styles.button}>
-              Sign Up
-            </button>
-          </form>
         )}
       </div>
     </div>
   );
 }
-
-const styles = {
-  container: {
-    maxWidth: '500px',
-    margin: '50px auto',
-    padding: '30px',
-    backgroundColor: '#f9f9f9',
-    borderRadius: '10px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px'
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '5px'
-  },
-  label: {
-    fontWeight: 'bold',
-    fontSize: '14px',
-    color: '#333'
-  },
-  input: {
-    padding: '10px',
-    fontSize: '16px',
-    border: '1px solid #ddd',
-    borderRadius: '5px',
-    outline: 'none',
-    transition: 'border-color 0.3s'
-  },
-  inputError: {
-    padding: '10px',
-    fontSize: '16px',
-    border: '2px solid #ff4444',
-    borderRadius: '5px',
-    outline: 'none'
-  },
-  error: {
-    color: '#ff4444',
-    fontSize: '12px',
-    marginTop: '2px'
-  },
-  button: {
-    padding: '12px',
-    fontSize: '16px',
-    fontWeight: 'bold',
-    color: 'white',
-    backgroundColor: '#4CAF50',
-    border: 'none',
-    borderRadius: '5px',
-    cursor: 'pointer',
-    marginTop: '10px',
-    transition: 'background-color 0.3s'
-  },
-  successContainer: {
-    textAlign: 'center',
-    padding: '20px',
-    backgroundColor: '#e8f5e9',
-    borderRadius: '10px'
-  },
-  successTitle: {
-    color: '#4CAF50',
-    marginBottom: '15px'
-  },
-  successMessage: {
-    fontSize: '16px',
-    color: '#333',
-    marginBottom: '10px'
-  }
-};
 
 export default App;
